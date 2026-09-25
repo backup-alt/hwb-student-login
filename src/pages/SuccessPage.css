@@ -3,7 +3,7 @@
 .success-card { width: min(100%, 430px); padding: clamp(26px, 7vw, 40px); border: 1px solid #e2e9f3; border-radius: 24px; background: white; box-shadow: 0 18px 50px rgba(25, 56, 105, .09); text-align: center; }
 .success-check { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 20px; border-radius: 50%; background: #e5f7ed; color: #16834b; font-size: 36px; font-weight: 700; }
 .success-eyebrow { margin: 0 0 9px; color: #4269a0; font-size: 11px; font-weight: 800; letter-spacing: .14em; }
-.success-card h1 { margin: 0; font-size: clamp(27px, 7vw, 34px); line-height: 1.15; letter-spacing: -.04em; }
+.success-card h1 { margin: 0 0 24px; font-size: clamp(27px, 7vw, 34px); line-height: 1.15; letter-spacing: -.04em; }
 .success-intro { margin: 14px 0 24px; color: #61718a; line-height: 1.55; font-size: 14px; }
 .success-student { display: flex; align-items: center; gap: 13px; padding: 15px; border: 1px solid #dbe8fb; border-radius: 13px; background: #f3f8ff; text-align: left; }
 .success-avatar { display: grid; place-items: center; flex: 0 0 42px; height: 42px; border-radius: 50%; background: #1957aa; color: white; font-size: 20px; font-weight: 700; }
@@ -17,7 +17,7 @@
 .success-primary:hover { background: #116b3c; }
 .success-fallback { display: inline-block; margin-top: 16px; color: #1957aa; font-size: 13px; font-weight: 700; text-decoration: underline; }
 .success-note { margin: 21px 0 0; color: #8290a4; line-height: 1.5; font-size: 12px; }
-.success-details { margin: 18px 0 0; padding: 0; text-align: left; }
+.success-details { margin: 18px 0 26px; padding: 0; text-align: left; }
 .success-details div { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid #e8edf5; font-size: 13px; }
 .success-details dt { flex: 0 0 85px; color: #61718a; }
 .success-details dd { margin: 0; text-align: right; overflow-wrap: anywhere; font-weight: 600; }
