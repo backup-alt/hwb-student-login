@@ -6,6 +6,8 @@ Live site: https://backup-alt.github.io/hwb-student-login/
 
 Students enter their roll number, matching university email, and WhatsApp mobile number, then verify the six-digit code sent by email. The signed-in page shows their profile and available attendance summary. A one-time `LINK` message sent from the entered mobile number pairs their WhatsApp account with the bot. The QR assets are in `public/`.
 
+The backend accepts a roll number found in `test.students` or `test.overallAttendance`. A roll missing from both displays "Your Record not added yet." Student-only records show the profile while attendance remains unavailable.
+
 The GitHub Pages workflow builds this React app with `PUBLIC_URL=/hwb-student-login` and points it at the Railway backend. No Firebase service account or SMTP credentials belong in this repository.
 
 For local development:

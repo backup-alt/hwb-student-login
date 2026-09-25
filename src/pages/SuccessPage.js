@@ -27,7 +27,7 @@ function SuccessPage() {
         if (includePairing) {
           axios.get(`${API_URL}/api/student-auth/attendance`, { headers })
             .then((response) => { if (active) setAttendance(response.data.attendance); })
-            .catch(() => { if (active) setAttendance(null); });
+            .catch(() => { if (active) setAttendance({ error: true }); });
         }
         if (includePairing && !data.student.whatsappVerified) {
           const pairing = await axios.post(`${API_URL}/api/student-auth/link-code`, {}, { headers });
@@ -87,6 +87,7 @@ function SuccessPage() {
         </div>
         <dl className="success-details">
           <div><dt>Semester</dt><dd>{student.semester || "—"}</dd></div>
+          <div><dt>Year</dt><dd>{student.year ?? "—"}</dd></div>
           <div><dt>Section</dt><dd>{student.section || "—"}</dd></div>
           <div><dt>Department</dt><dd>{student.department}</dd></div>
           <div><dt>Email</dt><dd>{student.email}</dd></div>
@@ -95,7 +96,9 @@ function SuccessPage() {
         <section className="success-attendance" aria-labelledby="attendance-heading">
           <h2 id="attendance-heading">Attendance</h2>
           {attendance === undefined ? <p>Loading attendance…</p> : attendance === null ? (
-            <p>Attendance is currently unavailable.</p>
+            <p>Your attendance record has not been added yet.</p>
+          ) : attendance.error ? (
+            <p>Attendance is temporarily unavailable. Please refresh the page.</p>
           ) : <>
             <p className="success-attendance-overall">Overall: <strong>{attendance.overallPercentage == null ? "Not available" : `${attendance.overallPercentage}%`}</strong></p>
             {attendance.period && <p>Period: {attendance.period}</p>}
