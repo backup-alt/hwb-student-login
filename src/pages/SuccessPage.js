@@ -1,62 +1,128 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { WHATSAPP_CHAT_URL, preferredWhatsAppUrl, isMobileDevice } from "../whatsapp";
+import axios from "axios";
+import { isMobileDevice, preferredWhatsAppUrl, whatsappChatUrl } from "../whatsapp";
 import "./SuccessPage.css";
+
+const API_URL = process.env.REACT_APP_API_URL || "https://hwb-production-00fd.up.railway.app";
 
 function SuccessPage() {
   const [student, setStudent] = useState(null);
+  const [pairingCode, setPairingCode] = useState("");
+  const [attendance, setAttendance] = useState(undefined);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    const stored = localStorage.getItem("hits_student");
-    if (!stored) {
-      navigate("/", { replace: true });
-      return;
-    }
-    try {
-      setStudent(JSON.parse(stored));
-    } catch (_) {
-      navigate("/", { replace: true });
-      return;
-    }
-    if (sessionStorage.getItem("hits_open_whatsapp") === "1") {
-      sessionStorage.removeItem("hits_open_whatsapp");
-      // An app launch after an asynchronous OTP request can be blocked.
-      // Keep the direct tap target below for that case.
-      window.location.assign(preferredWhatsAppUrl());
-    }
+    let active = true;
+    const token = localStorage.getItem("hits_token");
+    if (!token) { navigate("/", { replace: true }); return undefined; }
+    const headers = { Authorization: `Bearer ${token}` };
+    const refresh = async (includePairing = false) => {
+      try {
+        const { data } = await axios.get(`${API_URL}/api/student-auth/me`, { headers });
+        if (!active) return;
+        setStudent(data.student);
+        localStorage.setItem("hits_student", JSON.stringify(data.student));
+        if (includePairing) {
+          axios.get(`${API_URL}/api/student-auth/attendance`, { headers })
+            .then((response) => { if (active) setAttendance(response.data.attendance); })
+            .catch(() => { if (active) setAttendance(null); });
+        }
+        if (includePairing && !data.student.whatsappVerified) {
+          const pairing = await axios.post(`${API_URL}/api/student-auth/link-code`, {}, { headers });
+          if (active) setPairingCode(pairing.data.code || "");
+        }
+        if (data.student.whatsappVerified) setPairingCode("");
+      } catch (err) {
+        if (!active) return;
+        if (err.response?.status === 401) {
+          localStorage.removeItem("hits_token");
+          localStorage.removeItem("hits_student");
+          navigate("/", { replace: true });
+        } else setError("Could not load your profile. Please refresh the page.");
+      }
+    };
+    refresh(true);
+    const onFocus = () => refresh(false);
+    window.addEventListener("focus", onFocus);
+    return () => { active = false; window.removeEventListener("focus", onFocus); };
   }, [navigate]);
 
-  if (!student) return null;
+  const logout = async () => {
+    try {
+      await axios.post(`${API_URL}/api/student-auth/logout`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("hits_token")}` },
+      });
+      localStorage.removeItem("hits_token");
+      localStorage.removeItem("hits_student");
+      navigate("/", { replace: true });
+    } catch (_) { setError("Could not log out. Please try again."); }
+  };
+
+  const renewPairingCode = async () => {
+    try {
+      const { data } = await axios.post(`${API_URL}/api/student-auth/link-code`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("hits_token")}` },
+      });
+      setPairingCode(data.code || "");
+      setError("");
+    } catch (_) { setError("Could not create a new pairing code. Please try again."); }
+  };
+
+  if (!student) return <main className="success-screen"><p>{error || "Loading your profile…"}</p></main>;
+  const message = pairingCode ? `LINK ${pairingCode}` : "Hi";
 
   return (
     <main className="success-screen">
       <section className="success-card" aria-labelledby="success-heading">
         <div className="success-check" aria-hidden="true">✓</div>
         <p className="success-eyebrow">HITS STUDENT ACCESS</p>
-        <h1 id="success-heading">You’re signed in</h1>
-        <p className="success-intro">Your email is verified. Open the HITS WhatsApp Bot chat to continue.</p>
-
+        <h1 id="success-heading">Your student profile</h1>
+        <p className="success-intro">You’re signed in. Your account remains active until you log out.</p>
+        {error && <p className="success-warning" role="alert">{error}</p>}
         <div className="success-student">
           <span className="success-avatar" aria-hidden="true">{student.name?.charAt(0).toUpperCase() || "S"}</span>
-          <div>
-            <strong>{student.name || "Student"}</strong>
-            <span>Roll no. {student.rollNo || student.rollNumber || "—"}</span>
-          </div>
+          <div><strong>{student.name || "Student"}</strong><span>{student.rollNo}</span></div>
         </div>
-
-        <p className="success-instruction">Send the prefilled <strong>Hi</strong> message in WhatsApp. The bot will greet you as a student.</p>
-        {student.whatsappPhoneLast4 ? (
-          <p className="success-phone">Use the WhatsApp account ending <strong>{student.whatsappPhoneLast4}</strong>, saved in your ERP profile.</p>
-        ) : (
-          <p className="success-warning">Your ERP profile has no valid phone number. Ask the ERP admin to add the number you use for WhatsApp.</p>
-        )}
-
-        <a className="success-primary" href={preferredWhatsAppUrl()}>
+        <dl className="success-details">
+          <div><dt>Semester</dt><dd>{student.semester || "—"}</dd></div>
+          <div><dt>Section</dt><dd>{student.section || "—"}</dd></div>
+          <div><dt>Department</dt><dd>{student.department}</dd></div>
+          <div><dt>Email</dt><dd>{student.email}</dd></div>
+          <div><dt>Mobile</dt><dd>{student.phone}</dd></div>
+        </dl>
+        <section className="success-attendance" aria-labelledby="attendance-heading">
+          <h2 id="attendance-heading">Attendance</h2>
+          {attendance === undefined ? <p>Loading attendance…</p> : attendance === null ? (
+            <p>Attendance is currently unavailable.</p>
+          ) : <>
+            <p className="success-attendance-overall">Overall: <strong>{attendance.overallPercentage == null ? "Not available" : `${attendance.overallPercentage}%`}</strong></p>
+            {attendance.period && <p>Period: {attendance.period}</p>}
+            <ul>{attendance.subjects.map((subject) => (
+              <li key={subject.code}><span>{subject.name} <small>({subject.code})</small></span><strong>{subject.percentage == null ? "Not available" : `${subject.percentage}%`}</strong></li>
+            ))}</ul>
+            <p>Daily attendance records are not available in this data source.</p>
+          </>}
+        </section>
+        <section className="success-leave" aria-labelledby="leave-heading">
+          <h2 id="leave-heading">How to apply for leave</h2>
+          <p>Contact your class advisor or department office with your roll number, leave dates, reason, and any required documents. Leave requests cannot be submitted here yet.</p>
+        </section>
+        <p className="success-instruction">
+          {student.whatsappVerified
+            ? "Open WhatsApp to view attendance, profile, leave guidance, or log out."
+            : pairingCode
+              ? <>Open WhatsApp from the mobile number ending <strong>{student.whatsappPhoneLast4}</strong> and send the prefilled <strong>LINK {pairingCode}</strong> message. The pairing code expires in 10 minutes.</>
+              : "Preparing your WhatsApp pairing message…"}
+        </p>
+        <a className="success-primary" href={preferredWhatsAppUrl(message)} aria-disabled={!student.whatsappVerified && !pairingCode}
+          onClick={(event) => { if (!student.whatsappVerified && !pairingCode) event.preventDefault(); }}>
           {isMobileDevice() ? "Open WhatsApp app" : "Open WhatsApp chat"}
         </a>
-        <a className="success-fallback" href={WHATSAPP_CHAT_URL}>If the app does not open, try the web chat</a>
-        <p className="success-note">If you opened this page inside Google, use your browser’s menu to open it in Chrome, then tap the button above.</p>
+        {(student.whatsappVerified || pairingCode) && <a className="success-fallback" href={whatsappChatUrl(message)}>Use WhatsApp Web instead</a>}
+        {!student.whatsappVerified && <button className="success-renew" type="button" onClick={renewPairingCode}>Get a new pairing code</button>}
+        <button className="success-logout" type="button" onClick={logout}>Log out</button>
       </section>
     </main>
   );

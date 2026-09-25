@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./LoginPage.css";
@@ -8,24 +8,90 @@ const API_URL = process.env.REACT_APP_API_URL || "https://hwb-production-00fd.up
 function LoginPage() {
   const [rollNo, setRollNo] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [step, setStep] = useState("details");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const codeInputs = useRef([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem("hits_token");
+    if (!token) { setCheckingSession(false); return; }
+    axios.get(`${API_URL}/api/student-auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(({ data }) => {
+        localStorage.setItem("hits_student", JSON.stringify(data.student));
+        navigate("/success", { replace: true });
+      })
+      .catch((err) => {
+        if (err.response?.status === 401) {
+          localStorage.removeItem("hits_token");
+          localStorage.removeItem("hits_student");
+          setCheckingSession(false);
+        } else navigate("/success", { replace: true });
+      });
+  }, [navigate]);
+
+  const updateCode = (digits, focusIndex) => {
+    setCode(digits);
+    if (focusIndex !== undefined) {
+      requestAnimationFrame(() => codeInputs.current[focusIndex]?.focus());
+    }
+  };
+
+  const handleCodeChange = (index, value) => {
+    const digits = value.replace(/\D/g, "");
+    if (!digits) {
+      const next = code.split("");
+      next[index] = " ";
+      updateCode(next.join(""));
+      return;
+    }
+    const next = Array.from({ length: 6 }, (_, position) => code[position] || " ");
+    // Mobile one-time-code suggestions can insert the full code into one input.
+    for (let offset = 0; offset < digits.length && index + offset < 6; offset += 1) {
+      next[index + offset] = digits[offset];
+    }
+    updateCode(next.join(""), Math.min(index + digits.length, 5));
+  };
+
+  const handleCodePaste = (event) => {
+    const digits = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!digits) return;
+    event.preventDefault();
+    updateCode(digits, Math.min(digits.length, 5));
+  };
+
+  const handleCodeKeyDown = (event, index) => {
+    if (event.key === "Backspace") {
+      event.preventDefault();
+      const next = code.split("");
+      const target = next[index]?.trim() ? index : Math.max(index - 1, 0);
+      next[target] = " ";
+      updateCode(next.join(""), target);
+    } else if (event.key === "ArrowLeft" && index > 0) {
+      event.preventDefault();
+      codeInputs.current[index - 1]?.focus();
+    } else if (event.key === "ArrowRight" && index < 5) {
+      event.preventDefault();
+      codeInputs.current[index + 1]?.focus();
+    }
+  };
 
   const requestCode = async (event) => {
     event.preventDefault();
     setError("");
-    if (!rollNo.trim() || !email.trim()) {
-      setError("Enter your roll number and student email.");
+    if (!rollNo.trim() || !email.trim() || !phone.trim()) {
+      setError("Enter your roll number, student email, and mobile number.");
       return;
     }
     setLoading(true);
     try {
       const response = await axios.post(`${API_URL}/api/student-auth/request-otp`, {
-        rollNo: rollNo.trim(), email: email.trim(),
+        rollNo: rollNo.trim(), email: email.trim(), phone: phone.trim(),
       });
       setChallengeId(response.data.challengeId);
       setStep("code");
@@ -47,11 +113,10 @@ function LoginPage() {
     setLoading(true);
     try {
       const response = await axios.post(`${API_URL}/api/student-auth/verify-otp`, {
-        rollNo: rollNo.trim(), email: email.trim(), challengeId, code,
+        rollNo: rollNo.trim(), email: email.trim(), phone: phone.trim(), challengeId, code,
       });
       localStorage.setItem("hits_token", response.data.token);
       localStorage.setItem("hits_student", JSON.stringify(response.data.student));
-      sessionStorage.setItem("hits_open_whatsapp", "1");
       navigate("/success");
     } catch (err) {
       setError(err.response?.data?.error || "Could not verify the code. Please try again.");
@@ -59,6 +124,8 @@ function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (checkingSession) return <main className="login-screen"><p>Checking your session…</p></main>;
 
   return (
     <main className="login-screen">
@@ -68,7 +135,7 @@ function LoginPage() {
         <h1 id="login-heading">Sign in to HWB</h1>
         <p className="login-intro">
           {step === "details"
-            ? "Use your roll number and registered student email to get a secure login code."
+            ? "Use your roll number, matching university email, and mobile number to get a secure login code."
             : `Enter the code sent to ${email.trim()}. It expires in 10 minutes.`}
         </p>
 
@@ -83,8 +150,13 @@ function LoginPage() {
 
             <label htmlFor="studentEmail">Student email</label>
             <input id="studentEmail" name="studentEmail" type="email" autoComplete="email"
-              placeholder="you@college.edu" value={email}
+              placeholder="rollno@student.hindustanuniv.ac.in" value={email}
               onChange={(event) => setEmail(event.target.value)} required />
+
+            <label htmlFor="mobileNumber">Mobile number for WhatsApp</label>
+            <input id="mobileNumber" name="mobileNumber" type="tel" autoComplete="tel"
+              placeholder="Your WhatsApp mobile number" value={phone}
+              onChange={(event) => setPhone(event.target.value)} required />
 
             <button className="login-primary" type="submit" disabled={loading}>
               {loading ? "Sending code…" : "Send email code"}
@@ -92,11 +164,16 @@ function LoginPage() {
           </form>
         ) : (
           <form onSubmit={verifyCode} className="login-form">
-            <label htmlFor="code">Six-digit code</label>
-            <input id="code" name="code" className="login-code" type="text" inputMode="numeric"
-              pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" autoFocus
-              placeholder="000000" value={code}
-              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} required />
+            <label htmlFor="code-0">Six-digit code</label>
+            <div className="login-code-boxes" role="group" aria-label="Six-digit email code" onPaste={handleCodePaste}>
+              {Array.from({ length: 6 }, (_, index) => (
+                <input key={index} id={`code-${index}`} ref={(element) => { codeInputs.current[index] = element; }}
+                  className="login-code-box" type="text" inputMode="numeric" autoComplete={index === 0 ? "one-time-code" : "off"}
+                  autoFocus={index === 0} maxLength={6} aria-label={`Code digit ${index + 1} of 6`}
+                  value={code[index]?.trim() || ""} onChange={(event) => handleCodeChange(index, event.target.value)}
+                  onKeyDown={(event) => handleCodeKeyDown(event, index)} />
+              ))}
+            </div>
 
             <button className="login-primary" type="submit" disabled={loading}>
               {loading ? "Verifying…" : "Verify and sign in"}

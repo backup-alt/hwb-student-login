@@ -4,7 +4,7 @@ Public frontend for the HWB student email OTP login. The ERP backend is hosted s
 
 Live site: https://backup-alt.github.io/hwb-student-login/
 
-Students enter their roll number and registered university email, verify the code sent by email, and are directed to the HWB WhatsApp bot chat. The QR assets are in `public/`.
+Students enter their roll number, matching university email, and WhatsApp mobile number, then verify the six-digit code sent by email. The signed-in page shows their profile and available attendance summary. A one-time `LINK` message sent from the entered mobile number pairs their WhatsApp account with the bot. The QR assets are in `public/`.
 
 The GitHub Pages workflow builds this React app with `PUBLIC_URL=/hwb-student-login` and points it at the Railway backend. No Firebase service account or SMTP credentials belong in this repository.
 
