@@ -45,26 +45,27 @@ function SuccessPage() {
   }, [navigate]);
 
   if (!student) return <main className="success-screen"><p>{error || "Loading your profile…"}</p></main>;
-  const message = `Hi, I'm ${student.name || "a student"}. ${pairingCode ? `LINK ${pairingCode}` : ""}`.trim() +
+  const message = `Hi, I'm ${student.parentName || student.name || "a student"}. ${pairingCode ? `LINK ${pairingCode}` : ""}`.trim() +
     "\nCan you explain what this student assistant does?";
 
   return (
     <main className="success-screen">
       <section className="success-card" aria-labelledby="success-heading">
         <p className="success-eyebrow">HITS STUDENT ACCESS</p>
-        <h1 id="success-heading">Student profile</h1>
+        <h1 id="success-heading">{student.role === "parent" ? "Parent access" : "Student profile"}</h1>
         {error && <p className="success-warning" role="alert">{error}</p>}
         <div className="success-student">
           <span className="success-avatar" aria-hidden="true">{student.name?.charAt(0).toUpperCase() || "S"}</span>
           <div><strong>{student.name || "Student"}</strong><span>{student.rollNo}</span></div>
         </div>
         <dl className="success-details">
+          {student.role === "parent" && <div><dt>Parent</dt><dd>{student.parentName}</dd></div>}
           <div><dt>Semester</dt><dd>{student.semester || "—"}</dd></div>
           <div><dt>Year</dt><dd>{student.year ?? "—"}</dd></div>
           <div><dt>Section</dt><dd>{student.section || "—"}</dd></div>
           <div><dt>Department</dt><dd>{student.department}</dd></div>
           <div><dt>Email</dt><dd>{student.email}</dd></div>
-          <div><dt>Mobile</dt><dd>{student.phone}</dd></div>
+          <div><dt>{student.role === "parent" ? "Parent mobile" : "Mobile"}</dt><dd>{student.phone}</dd></div>
         </dl>
         <a className="success-primary" href={preferredWhatsAppUrl(message)} aria-disabled={!student.whatsappVerified && !pairingCode}
           onClick={async (event) => {
@@ -78,7 +79,7 @@ function SuccessPage() {
               });
               setPairingCode(data.code);
               setPairingCreatedAt(Date.now());
-              const freshMessage = `Hi, I'm ${student.name || "a student"}. LINK ${data.code}\nCan you explain what this student assistant does?`;
+              const freshMessage = `Hi, I'm ${student.parentName || student.name || "a student"}. LINK ${data.code}\nCan you explain what this student assistant does?`;
               window.location.href = preferredWhatsAppUrl(freshMessage);
             } catch (_) { setError("Could not prepare WhatsApp. Please try again."); }
           }}>

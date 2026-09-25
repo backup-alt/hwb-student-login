@@ -8,6 +8,8 @@ const API_URL = process.env.REACT_APP_API_URL || "https://hwb-production-00fd.up
 function LoginPage() {
   const [rollNo, setRollNo] = useState("");
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState("student");
+  const [parentName, setParentName] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [challengeId, setChallengeId] = useState("");
@@ -91,7 +93,7 @@ function LoginPage() {
     setLoading(true);
     try {
       const response = await axios.post(`${API_URL}/api/student-auth/request-otp`, {
-        rollNo: rollNo.trim(), email: email.trim(), phone: phone.trim(),
+        rollNo: rollNo.trim(), email: email.trim(), phone: phone.trim(), role, parentName: parentName.trim(),
       });
       setChallengeId(response.data.challengeId);
       setStep("code");
@@ -113,7 +115,7 @@ function LoginPage() {
     setLoading(true);
     try {
       const response = await axios.post(`${API_URL}/api/student-auth/verify-otp`, {
-        rollNo: rollNo.trim(), email: email.trim(), phone: phone.trim(), challengeId, code,
+        rollNo: rollNo.trim(), email: email.trim(), phone: phone.trim(), role, parentName: parentName.trim(), challengeId, code,
       });
       localStorage.setItem("hits_token", response.data.token);
       localStorage.setItem("hits_student", JSON.stringify(response.data.student));
@@ -143,7 +145,17 @@ function LoginPage() {
 
         {step === "details" ? (
           <form onSubmit={requestCode} className="login-form">
-            <label htmlFor="rollNo">Roll number</label>
+            <label htmlFor="loginRole">Sign in as</label>
+            <select id="loginRole" value={role} onChange={(event) => setRole(event.target.value)}>
+              <option value="student">Student</option><option value="parent">Parent</option>
+            </select>
+            {role === "parent" && <>
+              <label htmlFor="parentName">Parent name</label>
+              <input id="parentName" autoComplete="name" maxLength={100} minLength={2} required
+                value={parentName} onChange={(event) => setParentName(event.target.value)} />
+              <p>The parent login code is sent to the student's university email. Ask your child to share this code only if they authorize your access.</p>
+            </>}
+            <label htmlFor="rollNo">Student roll number</label>
             <input id="rollNo" name="rollNo" type="text" autoComplete="username" autoCapitalize="characters"
               maxLength={30} placeholder="e.g. 23CS001" value={rollNo}
               onChange={(event) => setRollNo(event.target.value)} required />
@@ -153,11 +165,12 @@ function LoginPage() {
               placeholder="rollno@student.hindustanuniv.ac.in" value={email}
               onChange={(event) => setEmail(event.target.value)} required />
 
-            <label htmlFor="mobileNumber">Mobile number for WhatsApp</label>
+            <label htmlFor="mobileNumber">{role === "parent" ? "Parent WhatsApp mobile number" : "Student WhatsApp mobile number"}</label>
             <input id="mobileNumber" name="mobileNumber" type="tel" autoComplete="tel"
               placeholder="Your WhatsApp mobile number" value={phone}
               onChange={(event) => setPhone(event.target.value)} required />
 
+            {role === "student" && <p className="login-intro">If a mobile number is already saved, that number will be used for WhatsApp.</p>}
             <button className="login-primary" type="submit" disabled={loading}>
               {loading ? "Sending code…" : "Send email code"}
             </button>
