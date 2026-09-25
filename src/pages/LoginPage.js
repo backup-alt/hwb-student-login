@@ -7,7 +7,7 @@ const API_URL = process.env.REACT_APP_API_URL || "https://hwb-production-00fd.up
 
 function LoginPage() {
   const [rollNo, setRollNo] = useState("");
-  const [email, setEmail] = useState("");
+  const email = rollNo.trim() ? `${rollNo.trim().toLowerCase()}@student.hindustanuniv.ac.in` : "";
   const [role, setRole] = useState("student");
   const [parentName, setParentName] = useState("");
   const [phone, setPhone] = useState("");
@@ -87,7 +87,7 @@ function LoginPage() {
     event.preventDefault();
     setError("");
     if (!rollNo.trim() || !email.trim() || !phone.trim()) {
-      setError("Enter your roll number, student email, and mobile number.");
+      setError("Enter the student roll number and mobile number.");
       return;
     }
     setLoading(true);
@@ -137,7 +137,7 @@ function LoginPage() {
         <h1 id="login-heading">Sign in to HWB</h1>
         <p className="login-intro">
           {step === "details"
-            ? "Use your roll number, matching university email, and mobile number to get a secure login code."
+            ? "Enter the student roll number and mobile number. The university email fills automatically."
             : `Enter the code sent to ${email.trim()}. It expires in 10 minutes.`}
         </p>
 
@@ -157,13 +157,13 @@ function LoginPage() {
             </>}
             <label htmlFor="rollNo">Student roll number</label>
             <input id="rollNo" name="rollNo" type="text" autoComplete="username" autoCapitalize="characters"
-              maxLength={30} placeholder="e.g. 23CS001" value={rollNo}
-              onChange={(event) => setRollNo(event.target.value)} required />
+              maxLength={30} placeholder="21CU0310090" value={rollNo}
+              onChange={(event) => setRollNo(event.target.value.toUpperCase())} required />
 
             <label htmlFor="studentEmail">Student email</label>
-            <input id="studentEmail" name="studentEmail" type="email" autoComplete="email"
-              placeholder="rollno@student.hindustanuniv.ac.in" value={email}
-              onChange={(event) => setEmail(event.target.value)} required />
+            <input id="studentEmail" name="studentEmail" type="email" autoComplete="off"
+              placeholder="21cu0310090@student.hindustanuniv.ac.in" value={email}
+              readOnly required />
 
             <label htmlFor="mobileNumber">{role === "parent" ? "Parent WhatsApp mobile number" : "Student WhatsApp mobile number"}</label>
             <input id="mobileNumber" name="mobileNumber" type="tel" autoComplete="tel"
