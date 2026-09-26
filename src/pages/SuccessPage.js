@@ -6,6 +6,13 @@ import "./SuccessPage.css";
 
 const API_URL = process.env.REACT_APP_API_URL || "https://hwb-production-00fd.up.railway.app";
 
+const whatsAppIntroMessage = (student, code) => {
+  const name = student.parentName || student.name || "a student";
+  const greeting = `Hi, I'm ${name}.`;
+  if (!code) return `${greeting}\nCan you explain what this student assistant does?`;
+  return `${greeting} LINK ${code}\nI'd like help with Semester II CIA marks, attendance, class teacher information, leave or OD requests, internships, international opportunities, and study questions. What can I ask?`;
+};
+
 function SuccessPage() {
   const [student, setStudent] = useState(null);
   const [pairingCode, setPairingCode] = useState("");
@@ -45,8 +52,7 @@ function SuccessPage() {
   }, [navigate]);
 
   if (!student) return <main className="success-screen"><p>{error || "Loading your profile…"}</p></main>;
-  const message = `Hi, I'm ${student.parentName || student.name || "a student"}. ${pairingCode ? `LINK ${pairingCode}` : ""}`.trim() +
-    "\nCan you explain what this student assistant does?";
+  const message = whatsAppIntroMessage(student, pairingCode);
 
   return (
     <main className="success-screen">
@@ -79,8 +85,7 @@ function SuccessPage() {
               });
               setPairingCode(data.code);
               setPairingCreatedAt(Date.now());
-              const freshMessage = `Hi, I'm ${student.parentName || student.name || "a student"}. LINK ${data.code}\nCan you explain what this student assistant does?`;
-              window.location.href = preferredWhatsAppUrl(freshMessage);
+              window.location.href = preferredWhatsAppUrl(whatsAppIntroMessage(student, data.code));
             } catch (_) { setError("Could not prepare WhatsApp. Please try again."); }
           }}>
           Open WhatsApp
