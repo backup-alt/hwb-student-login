@@ -10,7 +10,7 @@ const whatsAppIntroMessage = (student, code) => {
   const name = student.parentName || student.name || "a student";
   const greeting = `Hi, I'm ${name}.`;
   if (!code) return `${greeting}\nCan you explain what this student assistant does?`;
-  return `${greeting} LINK ${code}\nI'd like help with Semester II CIA marks, attendance, class teacher information, leave or OD requests, internships, international opportunities, and study questions. What can I ask?`;
+  return `${greeting} LINK ${code}\nI'd like help with Semester II internal marks, attendance, class teacher information, leave or OD requests, internships, international opportunities, and study questions. What can I ask?`;
 };
 
 function SuccessPage() {
