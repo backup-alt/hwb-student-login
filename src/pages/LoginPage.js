@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./LoginPage.css";
 
-const API_URL = process.env.REACT_APP_API_URL || "https://hwb-production-00fd.up.railway.app";
+const rawApiUrl = (process.env.REACT_APP_API_URL || "").trim().replace(/\/+$/, "");
+const API_URL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(rawApiUrl) ? "" : rawApiUrl;
 
 function LoginPage() {
   const [rollNo, setRollNo] = useState("");
@@ -13,6 +14,7 @@ function LoginPage() {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [challengeId, setChallengeId] = useState("");
+  const [devCode, setDevCode] = useState("");
   const [step, setStep] = useState("details");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -96,6 +98,7 @@ function LoginPage() {
         rollNo: rollNo.trim(), email: email.trim(), phone: phone.trim(), role, parentName: parentName.trim(),
       });
       setChallengeId(response.data.challengeId);
+      setDevCode(response.data.devCode || "");
       setStep("code");
       setCode("");
     } catch (err) {
@@ -191,16 +194,23 @@ function LoginPage() {
             <button className="login-primary" type="submit" disabled={loading}>
               {loading ? "Verifying…" : "Verify and sign in"}
             </button>
-            <button className="login-link" type="button" onClick={() => { setStep("details"); setError(""); }}>
+            <button className="login-link" type="button" onClick={() => { setStep("details"); setDevCode(""); setError(""); }}>
               Change details or request another code
             </button>
           </form>
         )}
 
-        <aside className="login-help">
-          <span aria-hidden="true">✉</span>
-          <p><strong>Check your spam folder</strong><br />The OTP email may land in spam or junk. Only the newest code will work.</p>
-        </aside>
+        {step === "code" && devCode ? (
+          <aside className="login-help" role="status">
+            <span aria-hidden="true">🔑</span>
+            <p><strong>Your verification code is {devCode}</strong><br />Email delivery is not configured in this environment, so enter this six-digit code above.</p>
+          </aside>
+        ) : (
+          <aside className="login-help">
+            <span aria-hidden="true">✉</span>
+            <p><strong>Check your spam folder</strong><br />The OTP email may land in spam or junk. Only the newest code will work.</p>
+          </aside>
+        )}
       </section>
       <p className="login-footer">Hindustan Institute of Technology and Science</p>
     </main>

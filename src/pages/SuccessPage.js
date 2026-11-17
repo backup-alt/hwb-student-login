@@ -4,7 +4,8 @@ import axios from "axios";
 import { preferredWhatsAppUrl } from "../whatsapp";
 import "./SuccessPage.css";
 
-const API_URL = process.env.REACT_APP_API_URL || "https://hwb-production-00fd.up.railway.app";
+const rawApiUrl = (process.env.REACT_APP_API_URL || "").trim().replace(/\/+$/, "");
+const API_URL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(rawApiUrl) ? "" : rawApiUrl;
 
 const whatsAppIntroMessage = (student, code) => {
   const name = student.parentName || student.name || "a student";
