@@ -4,8 +4,12 @@ import axios from "axios";
 import { preferredWhatsAppUrl } from "../whatsapp";
 import "./SuccessPage.css";
 
+const DEFAULT_API_URL = "https://hwb-production-75a780dc.up.railway.app";
 const rawApiUrl = (process.env.REACT_APP_API_URL || "").trim().replace(/\/+$/, "");
-const API_URL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(rawApiUrl) ? "" : rawApiUrl;
+const API_URL =
+  !rawApiUrl || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(rawApiUrl)
+    ? DEFAULT_API_URL
+    : rawApiUrl;
 
 const whatsAppIntroMessage = (student, code) => {
   const name = student.parentName || student.name || "a student";
