@@ -1,4 +1,4 @@
-# DARK_MATTER_TRACE_V10
+# DARK_MATTER_TRACE_V12
 name: Dark Matter Cloud Agent
 
 on:
@@ -40,6 +40,16 @@ on:
         type: string
       thinking:
         description: 'Enable extended reasoning trace for complex queries (true/false)'
+        required: false
+        default: 'true'
+        type: string
+      thinking_effort:
+        description: 'Reasoning capacity variant (low, medium, high, max)'
+        required: false
+        default: 'medium'
+        type: string
+      token_optimization:
+        description: 'Enable repository context compression graph (true/false)'
         required: false
         default: 'true'
         type: string
@@ -197,6 +207,8 @@ jobs:
           BRANCH_STRATEGY: ${{ inputs.branch_strategy || 'direct' }}
           DEFAULT_BRANCH: ${{ github.ref_name }}
           TASK_THINKING: ${{ inputs.thinking || 'true' }}
+          TASK_VARIANT: ${{ inputs.thinking_effort || 'medium' }}
+          TASK_TOKEN_OPTIMIZATION: ${{ inputs.token_optimization || 'true' }}
         run: |
           MODEL="${TASK_MODEL:-opencode/big-pickle}"
           AGENT_MODE="${TASK_AGENT:-build}"
@@ -218,6 +230,47 @@ jobs:
             INSTRUCTIONS="$TASK_PROMPT"
           fi
 
+          if [ "$TASK_TOKEN_OPTIMIZATION" = "true" ]; then
+            mkdir -p /tmp/graphify-out
+            python3 - << 'PY_GRAPH_EOF' 2>/dev/null || true
+          import os, re, pathlib
+          root = pathlib.Path('.').resolve()
+          skip = {'.git', 'build', '.gradle', 'node_modules', '__pycache__', '.idea', '.kotlin'}
+          exts = {'.kt', '.java', '.py', '.ts', '.tsx', '.js', '.jsx', '.go', '.rs', '.swift', '.cs'}
+          files = []
+          for p in sorted(root.rglob('*')):
+              if any(part in skip for part in p.parts):
+                  continue
+              if p.is_file() and p.suffix in exts:
+                  files.append(p)
+              if len(files) >= 160:
+                  break
+          lines = ['# Repository Structural Graph Summary', f'Indexed {len(files)} source files.', '']
+          sym_re = re.compile(r'^(?:export\s+)?(?:public\s+|internal\s+|private\s+|open\s+|data\s+|sealed\s+|suspend\s+|async\s+)*(?:class|interface|object|enum|struct|def|function|fun)\s+([A-Za-z0-9_]+)')
+          for f in files[:90]:
+              rel = str(f.relative_to(root))
+              syms = []
+              try:
+                  for raw in f.read_text(errors='ignore').splitlines()[:120]:
+                      m = sym_re.match(raw.strip())
+                      if m and m.group(1) not in syms:
+                          syms.append(m.group(1))
+                      if len(syms) >= 6:
+                          break
+              except Exception:
+                  pass
+              if syms:
+                  lines.append(f'- `{rel}`: ' + ', '.join(syms))
+              else:
+                  lines.append(f'- `{rel}`')
+          pathlib.Path('/tmp/graphify-out/GRAPH_REPORT.md').write_text('\n'.join(lines)[:4000])
+          PY_GRAPH_EOF
+            if [ -s /tmp/graphify-out/GRAPH_REPORT.md ]; then
+              GRAPH_EXCERPT=$(head -c 3500 /tmp/graphify-out/GRAPH_REPORT.md 2>/dev/null || true)
+              INSTRUCTIONS="[Repository Context Index (/tmp/graphify-out/GRAPH_REPORT.md — inspect before broad recursive scans)]\n${GRAPH_EXCERPT}\n\n[User Request]\n${TASK_PROMPT}"
+            fi
+          fi
+
           FLAGS_CACHE_FILE="$HOME/.opencode-cli/.run_flags_v1"
           if [ -f "$FLAGS_CACHE_FILE" ]; then
             HELP_TEXT=$(cat "$FLAGS_CACHE_FILE" 2>/dev/null || true)
@@ -232,6 +285,9 @@ jobs:
           fi
           if [ "$TASK_THINKING" != "false" ] && printf '%s' "$HELP_TEXT" | grep -q -- '--thinking'; then
             OPENCODE_FLAGS+=(--thinking)
+          fi
+          if [ -n "$TASK_VARIANT" ] && printf '%s' "$HELP_TEXT" | grep -q -- '--variant'; then
+            OPENCODE_FLAGS+=(--variant "$TASK_VARIANT")
           fi
           if printf '%s' "$HELP_TEXT" | grep -q -- '--agent'; then
             OPENCODE_FLAGS+=(--agent "$AGENT_MODE")
